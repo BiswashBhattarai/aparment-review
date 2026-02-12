@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(uuid())
+  email             String   @unique
+  username          String?
+  password_hash     String
+  is_verified       Boolean  @default(false)
+  verification_token String?
+  is_student        Boolean  @default(false)
+  last_review_at    DateTime?
+  review_count      Int      @default(0)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  reviews           Review[]
+}
+
+model Apartment {
+  id                  String   @id @default(uuid())
+  name                String
+  address             String
+  latitude            Float?
+  longitude           Float?
+  rent_min            Float?
+  rent_max            Float?
+  bedrooms            Int?
+  bathrooms           Float?
+  distance_to_campus  Float?
+  utilities_included  String[] @default([])
+  pet_policy          String
+  parking_available   Boolean  @default(false)
+  parking_type        String
+  furnished           Boolean  @default(false)
+  lease_length_options String[] @default([])
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+  reviews             Review[]
+}
+
+model Review {
+  id                String   @id @default(uuid())
+  apartment         Apartment @relation(fields: [apartmentId], references: [id])
+  apartmentId       String
+  user              User     @relation(fields: [userId], references: [id])
+  userId            String
+  overall_rating    Int
+  noise_rating      Int
+  maintenance_rating Int
+  management_rating Int
+  value_rating      Int
+  written_review    String
+  display_as_anonymous Boolean @default(false)
+  is_verified_student Boolean @default(false)
+  created_at        DateTime @default(now())
+  moderation_flag   String   @default("none")
+
+  @@index([created_at])
+  @@index([apartmentId])
+}
