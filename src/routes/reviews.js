@@ -4,7 +4,8 @@ const { authenticate } = require('../middleware/auth');
 const router = express.Router();
 
 // Get reviews for apartment (paginated)
-router.get('/:apartmentId', async (req, res) => {
+// Endpoint: GET /api/apartments/:apartmentId/reviews
+router.get('/:apartmentId/reviews', async (req, res) => {
   const { apartmentId } = req.params;
   const page = Math.max(1, parseInt(req.query.page || '1'));
   const pageSize = 10;
@@ -21,7 +22,8 @@ router.get('/:apartmentId', async (req, res) => {
 });
 
 // Post a review
-router.post('/:apartmentId', authenticate, async (req, res) => {
+// Endpoint: POST /api/apartments/:apartmentId/reviews
+router.post('/:apartmentId/reviews', authenticate, async (req, res) => {
   const { apartmentId } = req.params;
   const user = req.user;
   const { overall_rating, noise_rating, maintenance_rating, management_rating, value_rating, written_review, display_as_anonymous } = req.body;
