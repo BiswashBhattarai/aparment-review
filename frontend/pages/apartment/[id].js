@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Header from '../../src/components/Header';
+import StarRating from '../../src/components/StarRating';
 
 export default function ApartmentPage(){
   const router = useRouter();
@@ -53,21 +54,21 @@ export default function ApartmentPage(){
                 <div key={r.id} style={{ background: '#fff', border: '1px solid #e0e0e0', padding: 20, borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 12 }}>
                     <div>
-                      <div style={{ fontWeight: '600', color: '#1a1a1a', fontSize: 15 }}>
+                      <div style={{ fontWeight: '600', color: '#1a1a1a', fontSize: 15, marginBottom: 8 }}>
                         {r.display_as_anonymous ? '🔒 Anonymous' : `👤 ${r.user?.username || 'User'}`}
                         {r.is_verified_student && <span style={{ marginLeft: 8, background: '#e3f2fd', color: '#0066cc', padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 500 }}>✓ Verified</span>}
                       </div>
+                      {r.overall_rating && <StarRating rating={r.overall_rating} size="md" />}
                     </div>
                     <div style={{ fontSize: 12, color: '#999' }}>{new Date(r.created_at).toLocaleDateString()}</div>
                   </div>
                   <p style={{ margin: '12px 0 0 0', color: '#333', lineHeight: 1.6 }}>{r.written_review}</p>
-                  {(r.overall_rating || r.noise_rating || r.maintenance_rating || r.management_rating || r.value_rating) && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0f0', fontSize: 12 }}>
-                      <div><span style={{ color: '#999' }}>Overall:</span> <strong style={{ color: '#0066cc' }}>{r.overall_rating}/5</strong></div>
-                      <div><span style={{ color: '#999' }}>Noise:</span> <strong style={{ color: '#0066cc' }}>{r.noise_rating}/5</strong></div>
-                      <div><span style={{ color: '#999' }}>Maintenance:</span> <strong style={{ color: '#0066cc' }}>{r.maintenance_rating}/5</strong></div>
-                      <div><span style={{ color: '#999' }}>Management:</span> <strong style={{ color: '#0066cc' }}>{r.management_rating}/5</strong></div>
-                      <div><span style={{ color: '#999' }}>Value:</span> <strong style={{ color: '#0066cc' }}>{r.value_rating}/5</strong></div>
+                  {(r.noise_rating || r.maintenance_rating || r.management_rating || r.value_rating) && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0f0', fontSize: 12 }}>
+                      <div><span style={{ color: '#999', display: 'block', marginBottom: 6 }}>🔊 Noise</span><StarRating rating={r.noise_rating} size="sm" /></div>
+                      <div><span style={{ color: '#999', display: 'block', marginBottom: 6 }}>🔧 Maintenance</span><StarRating rating={r.maintenance_rating} size="sm" /></div>
+                      <div><span style={{ color: '#999', display: 'block', marginBottom: 6 }}>👥 Management</span><StarRating rating={r.management_rating} size="sm" /></div>
+                      <div><span style={{ color: '#999', display: 'block', marginBottom: 6 }}>💵 Value</span><StarRating rating={r.value_rating} size="sm" /></div>
                     </div>
                   )}
                 </div>
