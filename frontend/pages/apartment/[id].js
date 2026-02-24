@@ -18,6 +18,7 @@ export default function ApartmentPage(){
   const [anonymous, setAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
+  const [formSuccess, setFormSuccess] = useState(null);
 
   useEffect(()=>{ if(id) load(); }, [id]);
 
@@ -46,6 +47,13 @@ export default function ApartmentPage(){
         {/* Reviews Section */}
         <section style={{ marginBottom: 40 }}>
           <h2 style={{ fontSize: 24, color: '#1a1a1a', marginBottom: 24 }}>⭐ Reviews</h2>
+          {apartment?.avg_overall_rating && (
+            <div style={{ background: '#f0f9ff', border: '1px solid #90caf9', padding: 16, borderRadius: 8, marginBottom: 24 }}>
+              <StarRating rating={apartment.avg_overall_rating} size="md" />
+              <span style={{ marginLeft: 16, fontSize: 16, color: '#333' }}>·</span>
+              <span style={{ marginLeft: 16, fontSize: 16, color: '#666' }}><strong>{apartment.review_count || 0}</strong> {apartment.review_count === 1 ? 'review' : 'reviews'}</span>
+            </div>
+          )}
           {reviews.length === 0 ? (
             <p style={{ color: '#999', fontSize: 16, fontStyle: 'italic' }}>No reviews yet. Be the first to share your experience!</p>
           ) : (
@@ -82,11 +90,16 @@ export default function ApartmentPage(){
           <h2 style={{ marginTop: 0, marginBottom: 24, fontSize: 24, color: '#1a1a1a' }}>✍️ Share Your Experience</h2>
           {typeof window === 'undefined' ? null : (
             !localStorage.getItem('token') ? (
-              <p style={{ fontSize: 16, color: '#666' }}>Please <a href="/login" style={{ color: '#0066cc', textDecoration: 'none', fontWeight: '500' }}>log in</a> to post a review.</p>
+              <div style={{ background: '#e3f2fd', border: '1px solid #90caf9', padding: 24, borderRadius: 8, textAlign: 'center' }}>
+                <p style={{ fontSize: 18, color: '#0066cc', fontWeight: '600', margin: '0 0 12px 0' }}>📝 Share Your Experience</p>
+                <p style={{ fontSize: 16, color: '#333', margin: '0 0 20px 0' }}>Sign in to post a review and help other students find the right place.</p>
+                <a href="/login" style={{ display: 'inline-block', padding: '12px 24px', background: '#0066cc', color: 'white', borderRadius: '6px', textDecoration: 'none', fontWeight: '600', transition: 'background 0.2s' }} onMouseEnter={e => e.target.style.background = '#0052a3'} onMouseLeave={e => e.target.style.background = '#0066cc'}>→ Sign In to Write a Review</a>
+              </div>
             ) : (
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 setFormError(null);
+                setFormSuccess(null);
                 if (reviewText.trim().length < 50) { setFormError('Review must be at least 50 characters'); return; }
                 setSubmitting(true);
                 try {
@@ -110,13 +123,22 @@ export default function ApartmentPage(){
                     const err = await res.json().catch(()=>({ error: 'Submission failed' }));
                     setFormError(err.error || 'Submission failed');
                   } else {
+                    setFormSuccess('✓ Review submitted! Thank you for sharing.');
                     setReviewText('');
                     setAnonymous(false);
+                    setOverall(5);
+                    setNoise(5);
+                    setMaintenance(5);
+                    setManagement(5);
+                    setValueRating(5);
+                    setTimeout(() => {
+                      setFormSuccess(null);
+                    }, 4000);
                     await load();
                   }
                 } catch (err) {
                   console.error(err);
-                  setFormError('Network error');
+                  setFormError('Network error while submitting review');
                 } finally { setSubmitting(false); }
               }}>
                 {/* Rating Grid */}
@@ -160,6 +182,9 @@ export default function ApartmentPage(){
                     Post anonymously (your name won't be shown)
                   </label>
                 </div>
+
+                {/* Success Message */}
+                {formSuccess && <div style={{ background: '#e6ffed', border: '1px solid #b7f0c5', color: '#056a2f', padding: 12, borderRadius: 6, marginBottom: 20, fontSize: 14, fontWeight: '500' }}>{formSuccess}</div>}
 
                 {/* Error Message */}
                 {formError && <div style={{ background: '#ffebee', border: '1px solid #ffcdd2', color: '#c62828', padding: 12, borderRadius: 6, marginBottom: 20, fontSize: 14 }}>⚠️ {formError}</div>}
