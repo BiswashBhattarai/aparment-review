@@ -4,5 +4,6 @@
   "/_document": "pages/_document.js",
   "/": "pages/index.js",
   "/login": "pages/login.js",
-  "/apartment/[id]": "pages/apartment/[id].js"
+  "/register": "pages/register.js",
+  "/verify-email": "pages/verify-email.js"
 }
