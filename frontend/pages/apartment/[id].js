@@ -2,204 +2,821 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Header from '../../src/components/Header';
-import StarRating from '../../src/components/StarRating';
+import Link from 'next/link';
 
-export default function ApartmentPage(){
+const BackIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="15 18 9 12 15 6"/>
+  </svg>
+);
+
+const MapPinIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+    <circle cx="12" cy="10" r="3"/>
+  </svg>
+);
+
+const WalkingIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="4" r="1.5"/>
+    <path d="M9 9l3-3 3 3"/>
+    <path d="M9 9l-2 7h10l-2-7"/>
+    <path d="M7 16l-1 5M17 16l1 5"/>
+  </svg>
+);
+
+const LockIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2"/>
+    <path d="M7 11V7a5 5 0 0110 0v4"/>
+  </svg>
+);
+
+const UserIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+
+const StarIcon = ({ filled = false }) => (
+  <span style={{ color: filled ? '#F5A623' : '#D5D0C8', fontSize: 20, lineHeight: 1 }}>★</span>
+);
+
+export default function ApartmentPage() {
   const router = useRouter();
   const { id } = router.query;
   const [apartment, setApartment] = useState(null);
   const [reviews, setReviews] = useState([]);
-  const [overall, setOverall] = useState(5);
-  const [noise, setNoise] = useState(5);
-  const [maintenance, setMaintenance] = useState(5);
-  const [management, setManagement] = useState(5);
-  const [valueRating, setValueRating] = useState(5);
+  const [ratings, setRatings] = useState({
+    overall: 5,
+    noise: 5,
+    maintenance: 5,
+    management: 5,
+    value: 5,
+  });
   const [reviewText, setReviewText] = useState('');
   const [anonymous, setAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
   const [formSuccess, setFormSuccess] = useState(null);
+  const [mounted, setMounted] = useState(false);
 
-  useEffect(()=>{ if(id) load(); }, [id]);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  async function load(){
-    try{
+  useEffect(() => {
+    if (id) load();
+  }, [id]);
+
+  async function load() {
+    try {
       const apt = await axios.get(`http://localhost:4000/api/apartments/${id}`);
       setApartment(apt.data.apartment);
       const rev = await axios.get(`http://localhost:4000/api/apartments/${id}/reviews`);
-      setReviews(rev.data.data);
-    }catch(err){ console.error(err) }
+      setReviews(rev.data.data || []);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
-  if(!apartment) return (<div><Header /><main style={{padding:20}}>Loading...</main></div>);
+  if (!apartment)
+    return (
+      <div>
+        <Header />
+        <main style={{ padding: 20, textAlign: 'center', color: 'var(--text3)' }}>
+          Loading...
+        </main>
+      </div>
+    );
+
+  const isLoggedIn = mounted && !!localStorage.getItem('jwt_token');
+
+  const handleRatingChange = (key, val) => {
+    setRatings({ ...ratings, [key]: val });
+  };
+
+  const handleStarClick = (key, val) => {
+    setRatings({ ...ratings, [key]: val });
+  };
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    setFormError(null);
+    setFormSuccess(null);
+
+    if (reviewText.trim().length < 50) {
+      setFormError('Review must be at least 50 characters');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch(`http://localhost:4000/api/apartments/${id}/reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('jwt_token')}`,
+        },
+        body: JSON.stringify({
+          overall_rating: ratings.overall,
+          noise_rating: ratings.noise,
+          maintenance_rating: ratings.maintenance,
+          management_rating: ratings.management,
+          value_rating: ratings.value,
+          written_review: reviewText,
+          display_as_anonymous: anonymous,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Submission failed' }));
+        setFormError(err.error || 'Submission failed');
+      } else {
+        setFormSuccess('✓ Review submitted! Thank you for sharing.');
+        setReviewText('');
+        setAnonymous(false);
+        setRatings({
+          overall: 5,
+          noise: 5,
+          maintenance: 5,
+          management: 5,
+          value: 5,
+        });
+        setTimeout(() => setFormSuccess(null), 4000);
+        await load();
+      }
+    } catch (err) {
+      console.error(err);
+      setFormError('Network error while submitting review');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getChips = () => {
+    const chips = [];
+    if (apartment.pet_policy?.toLowerCase().includes('yes') || apartment.pet_friendly) {
+      chips.push({ label: 'Pet-friendly', variant: 'green' });
+    }
+    if (apartment.furnished) {
+      chips.push({ label: 'Furnished', variant: 'blue' });
+    }
+    if (apartment.parking_available) {
+      chips.push({ label: 'Parking', variant: 'default' });
+    }
+    return chips;
+  };
+
+  const chips = getChips();
 
   return (
-    <div>
+    <>
       <Header />
-      <main style={{ padding: '40px 20px', maxWidth: '900px', margin: '0 auto' }}>
-        {/* Apartment Info Section */}
-        <section style={{ background: '#fff', border: '1px solid #e0e0e0', padding: 32, borderRadius: 8, marginBottom: 40, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          <h1 style={{ marginTop: 0, marginBottom: 16, fontSize: 32, color: '#1a1a1a' }}>🏢 {apartment.name}</h1>
-          <p style={{ margin: '12px 0', fontSize: 16, color: '#666' }}>📍 {apartment.address}</p>
-          <p style={{ margin: '12px 0', fontSize: 18, color: '#0066cc', fontWeight: '600' }}>💰 Rent: ${apartment.rent_min} - ${apartment.rent_max}/month</p>
-        </section>
+      <main>
+        {/* Hero Image */}
+        <div style={styles.heroImg}>
+          <div style={styles.heroImgLabel}>
+            Photo of {apartment.name}
+          </div>
+        </div>
 
-        {/* Reviews Section */}
-        <section style={{ marginBottom: 40 }}>
-          <h2 style={{ fontSize: 24, color: '#1a1a1a', marginBottom: 24 }}>⭐ Reviews</h2>
-          {apartment?.avg_overall_rating && (
-            <div style={{ background: '#f0f9ff', border: '1px solid #90caf9', padding: 16, borderRadius: 8, marginBottom: 24 }}>
-              <StarRating rating={apartment.avg_overall_rating} size="md" />
-              <span style={{ marginLeft: 16, fontSize: 16, color: '#333' }}>·</span>
-              <span style={{ marginLeft: 16, fontSize: 16, color: '#666' }}><strong>{apartment.review_count || 0}</strong> {apartment.review_count === 1 ? 'review' : 'reviews'}</span>
+        {/* Back button */}
+        <div style={styles.detailMeta}>
+          <button
+            onClick={() => router.back()}
+            style={styles.backBtn}
+          >
+            <BackIcon />
+            Back
+          </button>
+        </div>
+
+        {/* Apartment Meta */}
+        <div style={styles.detailMeta}>
+          <h1 style={styles.detailName}>{apartment.name}</h1>
+          <div style={styles.detailAddr}>
+            <MapPinIcon />
+            {apartment.address}
+          </div>
+
+          {/* Stats row */}
+          <div style={styles.detailStats}>
+            <div style={styles.detailPrice}>
+              ${apartment.rent_min}
+              <span> /mo</span>
+            </div>
+            <div style={styles.detailDivider} />
+            <div style={styles.detailRatingBlock}>
+              <div style={styles.detailRatingNum}>
+                {apartment.avg_overall_rating ? apartment.avg_overall_rating.toFixed(1) : '-'}
+              </div>
+              <div>
+                {apartment.avg_overall_rating && (
+                  <>
+                    <div style={{ display: 'flex', gap: 2 }}>
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <StarIcon key={i} filled={i < Math.round(apartment.avg_overall_rating)} />
+                      ))}
+                    </div>
+                    <div style={styles.detailReviewCount}>
+                      {apartment.review_count || 0} review{apartment.review_count !== 1 ? 's' : ''}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+            <div style={styles.detailDivider} />
+            <div style={styles.detailDistance}>
+              <WalkingIcon />
+              {(apartment.distance_to_campus || 0).toFixed(1)} mi to campus
+            </div>
+          </div>
+
+          {/* Chips */}
+          {chips.length > 0 && (
+            <div style={styles.detailChips}>
+              {chips.map((chip, idx) => (
+                <span
+                  key={idx}
+                  style={{
+                    ...styles.chip,
+                    ...(chip.variant === 'green' ? styles.chipGreen : {}),
+                    ...(chip.variant === 'blue' ? styles.chipBlue : {}),
+                  }}
+                >
+                  {chip.label}
+                </span>
+              ))}
             </div>
           )}
+        </div>
+
+        {/* Reviews Section */}
+        <div style={styles.detailMeta}>
+          <h2 style={styles.sectionTitle}>Reviews</h2>
+
           {reviews.length === 0 ? (
-            <p style={{ color: '#999', fontSize: 16, fontStyle: 'italic' }}>No reviews yet. Be the first to share your experience!</p>
+            <p style={styles.noReviews}>
+              No reviews yet. Be the first to share your experience!
+            </p>
           ) : (
-            <div style={{ display: 'grid', gap: 16, marginBottom: 32 }}>
-              {reviews.map(r => (
-                <div key={r.id} style={{ background: '#fff', border: '1px solid #e0e0e0', padding: 20, borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 12 }}>
+            <div style={styles.reviewsList}>
+              {reviews.map((review) => (
+                <div key={review.id} style={styles.reviewCard}>
+                  <div style={styles.reviewHeader}>
                     <div>
-                      <div style={{ fontWeight: '600', color: '#1a1a1a', fontSize: 15, marginBottom: 8 }}>
-                        {r.display_as_anonymous ? '🔒 Anonymous' : `👤 ${r.user?.username || 'User'}`}
-                        {r.is_verified_student && <span style={{ marginLeft: 8, background: '#e3f2fd', color: '#0066cc', padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 500 }}>✓ Verified</span>}
+                      <div style={styles.reviewAuthor}>
+                        {review.display_as_anonymous ? (
+                          <>
+                            <LockIcon />
+                            Anonymous
+                          </>
+                        ) : (
+                          <>
+                            <UserIcon />
+                            {review.user?.username || 'User'}
+                          </>
+                        )}
                       </div>
-                      {r.overall_rating && <StarRating rating={r.overall_rating} size="md" />}
+                      {review.is_verified_student && (
+                        <span style={styles.verifiedBadge}>
+                          <CheckIcon />
+                          Verified student
+                        </span>
+                      )}
+                      <div style={styles.reviewStars}>
+                        {Array.from({ length: 5 }, (_, i) => (
+                          <StarIcon key={i} filled={i < Math.round(review.overall_rating)} />
+                        ))}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 12, color: '#999' }}>{new Date(r.created_at).toLocaleDateString()}</div>
+                    <div style={styles.reviewDate}>
+                      {new Date(review.created_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </div>
                   </div>
-                  <p style={{ margin: '12px 0 0 0', color: '#333', lineHeight: 1.6 }}>{r.written_review}</p>
-                  {(r.noise_rating || r.maintenance_rating || r.management_rating || r.value_rating) && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0f0', fontSize: 12 }}>
-                      <div><span style={{ color: '#999', display: 'block', marginBottom: 6 }}>🔊 Noise</span><StarRating rating={r.noise_rating} size="sm" /></div>
-                      <div><span style={{ color: '#999', display: 'block', marginBottom: 6 }}>🔧 Maintenance</span><StarRating rating={r.maintenance_rating} size="sm" /></div>
-                      <div><span style={{ color: '#999', display: 'block', marginBottom: 6 }}>👥 Management</span><StarRating rating={r.management_rating} size="sm" /></div>
-                      <div><span style={{ color: '#999', display: 'block', marginBottom: 6 }}>💵 Value</span><StarRating rating={r.value_rating} size="sm" /></div>
+
+                  <p style={styles.reviewText}>{review.written_review}</p>
+
+                  {(review.noise_rating ||
+                    review.maintenance_rating ||
+                    review.management_rating ||
+                    review.value_rating) && (
+                    <div style={styles.reviewSubRatings}>
+                      {[
+                        { label: 'Noise', rating: review.noise_rating },
+                        { label: 'Maintenance', rating: review.maintenance_rating },
+                        { label: 'Management', rating: review.management_rating },
+                        { label: 'Value', rating: review.value_rating },
+                      ].map((item) => (
+                        <div key={item.label}>
+                          <div style={styles.reviewSubLabel}>{item.label}</div>
+                          <div style={{ display: 'flex', gap: 2 }}>
+                            {Array.from({ length: 5 }, (_, i) => (
+                              <StarIcon
+                                key={i}
+                                filled={i < Math.round(item.rating)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
               ))}
             </div>
           )}
-        </section>
+        </div>
 
         {/* Write Review Section */}
-        <section style={{ background: '#fff', border: '1px solid #e0e0e0', padding: 32, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          <h2 style={{ marginTop: 0, marginBottom: 24, fontSize: 24, color: '#1a1a1a' }}>✍️ Share Your Experience</h2>
-          {typeof window === 'undefined' ? null : (
-            !localStorage.getItem('token') ? (
-              <div style={{ background: '#e3f2fd', border: '1px solid #90caf9', padding: 24, borderRadius: 8, textAlign: 'center' }}>
-                <p style={{ fontSize: 18, color: '#0066cc', fontWeight: '600', margin: '0 0 12px 0' }}>📝 Share Your Experience</p>
-                <p style={{ fontSize: 16, color: '#333', margin: '0 0 20px 0' }}>Sign in to post a review and help other students find the right place.</p>
-                <a href="/login" style={{ display: 'inline-block', padding: '12px 24px', background: '#0066cc', color: 'white', borderRadius: '6px', textDecoration: 'none', fontWeight: '600', transition: 'background 0.2s' }} onMouseEnter={e => e.target.style.background = '#0052a3'} onMouseLeave={e => e.target.style.background = '#0066cc'}>→ Sign In to Write a Review</a>
+        <div style={styles.detailMeta}>
+          <h2 style={styles.sectionTitle}>Share Your Experience</h2>
+
+          {!isLoggedIn ? (
+            <div style={styles.signInPrompt}>
+              <h3 style={styles.signInPromptTitle}>Sign in to share your experience</h3>
+              <p style={styles.signInPromptText}>
+                Help other students find the right place by sharing your honest review.
+              </p>
+              <div style={styles.signInPromptButtons}>
+                <Link href="/login">
+                  <a style={styles.btnPrimary}>Sign in</a>
+                </Link>
+                <Link href="/register">
+                  <a style={styles.btnOutline}>Create account</a>
+                </Link>
               </div>
-            ) : (
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                setFormError(null);
-                setFormSuccess(null);
-                if (reviewText.trim().length < 50) { setFormError('Review must be at least 50 characters'); return; }
-                setSubmitting(true);
-                try {
-                  const res = await fetch(`http://localhost:4000/api/apartments/${id}/reviews`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    },
-                    body: JSON.stringify({
-                      overall_rating: parseInt(overall),
-                      noise_rating: parseInt(noise),
-                      maintenance_rating: parseInt(maintenance),
-                      management_rating: parseInt(management),
-                      value_rating: parseInt(valueRating),
-                      written_review: reviewText,
-                      display_as_anonymous: !!anonymous
-                    })
-                  });
-                  if (!res.ok) {
-                    const err = await res.json().catch(()=>({ error: 'Submission failed' }));
-                    setFormError(err.error || 'Submission failed');
-                  } else {
-                    setFormSuccess('✓ Review submitted! Thank you for sharing.');
-                    setReviewText('');
-                    setAnonymous(false);
-                    setOverall(5);
-                    setNoise(5);
-                    setMaintenance(5);
-                    setManagement(5);
-                    setValueRating(5);
-                    setTimeout(() => {
-                      setFormSuccess(null);
-                    }, 4000);
-                    await load();
-                  }
-                } catch (err) {
-                  console.error(err);
-                  setFormError('Network error while submitting review');
-                } finally { setSubmitting(false); }
-              }}>
-                {/* Rating Grid */}
-                <div style={{ marginBottom: 28 }}>
-                  <label style={{ display: 'block', marginBottom: 16, fontWeight: '600', color: '#333' }}>Rate Your Experience (1-5 stars)</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 6, fontSize: 14, color: '#666' }}>⭐ Overall</label>
-                      <input type="number" min="1" max="5" value={overall} onChange={e=>setOverall(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }} />
+            </div>
+          ) : (
+            <form onSubmit={handleSubmitReview} style={styles.reviewForm}>
+              {/* Rating Grid */}
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Rate Your Experience</label>
+                <div style={styles.ratingRow}>
+                  {[
+                    ['overall', 'Overall'],
+                    ['noise', 'Noise'],
+                    ['maintenance', 'Maintenance'],
+                    ['management', 'Management'],
+                    ['value', 'Value'],
+                  ].map(([key, label]) => (
+                    <div key={key}>
+                      <label style={styles.ratingItemLabel}>{label}</label>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => handleStarClick(key, n)}
+                            style={{
+                              fontSize: 20,
+                              cursor: 'pointer',
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              lineHeight: 1,
+                              transition: 'transform 0.1s',
+                              color: n <= ratings[key] ? '#F5A623' : '#D5D0C8',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.transform = 'scale(1.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.transform = 'scale(1)';
+                            }}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 6, fontSize: 14, color: '#666' }}>🔊 Noise Level</label>
-                      <input type="number" min="1" max="5" value={noise} onChange={e=>setNoise(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 6, fontSize: 14, color: '#666' }}>🔧 Maintenance</label>
-                      <input type="number" min="1" max="5" value={maintenance} onChange={e=>setMaintenance(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 6, fontSize: 14, color: '#666' }}>👥 Management</label>
-                      <input type="number" min="1" max="5" value={management} onChange={e=>setManagement(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 6, fontSize: 14, color: '#666' }}>💵 Value</label>
-                      <input type="number" min="1" max="5" value={valueRating} onChange={e=>setValueRating(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }} />
-                    </div>
-                  </div>
+                  ))}
                 </div>
+              </div>
 
-                {/* Review Text */}
-                <div style={{ marginBottom: 20 }}>
-                  <label style={{ display: 'block', marginBottom: 8, fontWeight: '600', color: '#333' }}>Your Review (minimum 50 characters)</label>
-                  <textarea value={reviewText} onChange={e=>setReviewText(e.target.value)} rows={6} placeholder="Share details about your living experience, the community, amenities, any issues you encountered, etc." style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
-                  <p style={{ margin: '6px 0 0 0', fontSize: 12, color: '#999' }}>Characters: {reviewText.length}/50 minimum</p>
+              {/* Review Text */}
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Your Review</label>
+                <textarea
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  placeholder="Share details about your living experience, the community, amenities, and anything else helpful for future students..."
+                  style={styles.formTextarea}
+                />
+                <div style={styles.formHint}>
+                  {reviewText.length >= 50 ? (
+                    <>
+                      <CheckIcon /> Looks good
+                    </>
+                  ) : (
+                    `${reviewText.length}/50 characters minimum`
+                  )}
                 </div>
+              </div>
 
-                {/* Anonymous Checkbox */}
-                <div style={{ marginBottom: 20 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: '500', color: '#333' }}>
-                    <input type="checkbox" checked={anonymous} onChange={e=>setAnonymous(e.target.checked)} style={{ marginRight: 8, cursor: 'pointer', width: 18, height: 18 }} /> 
-                    Post anonymously (your name won't be shown)
-                  </label>
-                </div>
+              {/* Anonymous Toggle */}
+              <div style={styles.formGroup}>
+                <label style={styles.anonToggle}>
+                  <input
+                    type="checkbox"
+                    checked={anonymous}
+                    onChange={(e) => setAnonymous(e.target.checked)}
+                    style={{ marginRight: 10, cursor: 'pointer' }}
+                  />
+                  <span>Post anonymously</span>
+                </label>
+              </div>
 
-                {/* Success Message */}
-                {formSuccess && <div style={{ background: '#e6ffed', border: '1px solid #b7f0c5', color: '#056a2f', padding: 12, borderRadius: 6, marginBottom: 20, fontSize: 14, fontWeight: '500' }}>{formSuccess}</div>}
+              {/* Messages */}
+              {formSuccess && <div style={styles.msgSuccess}>{formSuccess}</div>}
+              {formError && <div style={styles.msgError}>{formError}</div>}
 
-                {/* Error Message */}
-                {formError && <div style={{ background: '#ffebee', border: '1px solid #ffcdd2', color: '#c62828', padding: 12, borderRadius: 6, marginBottom: 20, fontSize: 14 }}>⚠️ {formError}</div>}
-
-                {/* Submit Button */}
-                <div>
-                  <button type="submit" disabled={submitting || reviewText.trim().length < 50} style={{ padding: '12px 32px', background: reviewText.trim().length < 50 ? '#ccc' : '#0066cc', color: 'white', border: 'none', borderRadius: 6, fontWeight: '600', cursor: reviewText.trim().length < 50 ? 'not-allowed' : 'pointer', fontSize: 15, transition: 'background 0.2s' }} onMouseEnter={e => { if (reviewText.trim().length >= 50 && !submitting) e.target.style.background = '#0052a3'; }} onMouseLeave={e => { if (reviewText.trim().length >= 50 && !submitting) e.target.style.background = '#0066cc'; }}>
-                    {submitting ? '⏳ Submitting...' : '✅ Submit Review'}
-                  </button>
-                </div>
-              </form>
-            )
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={submitting || reviewText.trim().length < 50}
+                style={{
+                  ...styles.btnPrimary,
+                  ...((submitting || reviewText.trim().length < 50) &&
+                    styles.btnPrimaryDisabled),
+                  width: '100%',
+                  textAlign: 'center',
+                }}
+              >
+                {submitting ? 'Submitting...' : 'Submit Review'}
+              </button>
+            </form>
           )}
-        </section>
+        </div>
       </main>
-    </div>
-  )
+    </>
+  );
 }
+
+const styles = {
+  heroImg: {
+    background: 'var(--bg2)',
+    borderBottom: '1px solid var(--border)',
+    height: 280,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundImage: 'repeating-linear-gradient(135deg, var(--bg2), var(--bg2) 12px, #EDE9E2 12px, #EDE9E2 24px)',
+  },
+  heroImgLabel: {
+    background: 'var(--card)',
+    padding: '10px 20px',
+    borderRadius: 'var(--radius-sm)',
+    fontSize: 13,
+    color: 'var(--text3)',
+    border: '1px solid var(--border)',
+    boxShadow: 'var(--shadow-sm)',
+    fontWeight: 500,
+    position: 'relative',
+    zIndex: 1,
+  },
+  detailMeta: {
+    maxWidth: 900,
+    margin: '0 auto',
+    padding: '28px 24px',
+  },
+  backBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 14,
+    fontWeight: 500,
+    color: 'var(--text2)',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '6px 0',
+    transition: 'color 0.15s',
+    outline: 'none',
+    marginBottom: 20,
+  },
+  detailName: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: 32,
+    fontWeight: 600,
+    color: 'var(--text)',
+    marginBottom: 8,
+    margin: 0,
+  },
+  detailAddr: {
+    fontSize: 15,
+    color: 'var(--text2)',
+    marginBottom: 16,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+  },
+  detailStats: {
+    display: 'flex',
+    gap: 24,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  detailPrice: {
+    fontSize: 22,
+    fontWeight: 600,
+    color: 'var(--accent)',
+  },
+  detailDivider: {
+    width: 1,
+    height: 28,
+    background: 'var(--border)',
+  },
+  detailRatingBlock: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+  detailRatingNum: {
+    fontSize: 28,
+    fontWeight: 600,
+    color: 'var(--text)',
+  },
+  detailReviewCount: {
+    fontSize: 12,
+    color: 'var(--text3)',
+  },
+  detailDistance: {
+    fontSize: 14,
+    color: 'var(--text2)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+  },
+  detailChips: {
+    display: 'flex',
+    gap: 8,
+    flexWrap: 'wrap',
+    marginBottom: 20,
+  },
+  chip: {
+    fontSize: 11,
+    fontWeight: 500,
+    padding: '3px 10px',
+    borderRadius: 'var(--radius-pill)',
+    border: '1px solid var(--border)',
+    color: 'var(--text2)',
+    background: 'var(--bg)',
+  },
+  chipGreen: {
+    background: 'var(--green-soft)',
+    borderColor: 'var(--green)',
+    color: 'var(--green)',
+  },
+  chipBlue: {
+    background: 'var(--blue-soft)',
+    borderColor: 'var(--blue)',
+    color: 'var(--blue)',
+  },
+  sectionTitle: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: 22,
+    fontWeight: 600,
+    color: 'var(--text)',
+    marginBottom: 20,
+    margin: 0,
+  },
+  reviewsList: {
+    display: 'grid',
+    gap: 16,
+    marginBottom: 32,
+  },
+  reviewCard: {
+    background: 'var(--card)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    padding: 20,
+    boxShadow: 'var(--shadow-sm)',
+  },
+  reviewHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  reviewAuthor: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: 'var(--text)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  verifiedBadge: {
+    background: 'var(--blue-soft)',
+    color: 'var(--blue)',
+    border: `1px solid var(--blue)`,
+    fontSize: 11,
+    fontWeight: 600,
+    padding: '2px 8px',
+    borderRadius: 'var(--radius-pill)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  reviewStars: {
+    display: 'flex',
+    gap: 2,
+    marginTop: 6,
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: 'var(--text3)',
+  },
+  reviewText: {
+    fontSize: 14,
+    color: 'var(--text2)',
+    lineHeight: 1.65,
+    margin: '10px 0',
+  },
+  reviewSubRatings: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: 12,
+    paddingTop: 14,
+    borderTop: '1px solid var(--border)',
+    marginTop: 12,
+  },
+  reviewSubLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: 'var(--text3)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    marginBottom: 4,
+  },
+  noReviews: {
+    color: 'var(--text3)',
+    fontSize: 16,
+    fontStyle: 'italic',
+    margin: 0,
+  },
+  signInPrompt: {
+    background: 'var(--accent-soft)',
+    border: `1px solid oklch(88% 0.06 28)`,
+    borderRadius: 'var(--radius)',
+    padding: 32,
+    textAlign: 'center',
+  },
+  signInPromptTitle: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: 20,
+    fontWeight: 600,
+    color: 'var(--text)',
+    marginBottom: 8,
+    margin: 0,
+  },
+  signInPromptText: {
+    fontSize: 14,
+    color: 'var(--text2)',
+    marginBottom: 20,
+    margin: '8px 0 20px 0',
+  },
+  signInPromptButtons: {
+    display: 'flex',
+    gap: 12,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  reviewForm: {
+    background: 'var(--card)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    padding: 28,
+    boxShadow: 'var(--shadow-sm)',
+  },
+  formGroup: {
+    marginBottom: 20,
+  },
+  formLabel: {
+    display: 'block',
+    fontSize: 13,
+    fontWeight: 600,
+    color: 'var(--text)',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+  },
+  ratingRow: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+    gap: 16,
+    marginBottom: 24,
+  },
+  ratingItemLabel: {
+    display: 'block',
+    fontSize: 12,
+    fontWeight: 600,
+    color: 'var(--text2)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    marginBottom: 8,
+  },
+  formTextarea: {
+    width: '100%',
+    minHeight: 120,
+    padding: '10px 14px',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)',
+    fontSize: 14,
+    color: 'var(--text)',
+    background: 'var(--bg)',
+    outline: 'none',
+    transition: 'border-color 0.15s, box-shadow 0.15s',
+    lineHeight: 1.6,
+    resize: 'vertical',
+  },
+  formHint: {
+    fontSize: 12,
+    color: 'var(--text3)',
+    marginTop: 6,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  anonToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    cursor: 'pointer',
+    padding: '12px 16px',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)',
+    background: 'var(--bg)',
+  },
+  msgSuccess: {
+    background: 'var(--green-soft)',
+    border: `1px solid var(--green)`,
+    color: 'oklch(40% 0.14 155)',
+    padding: '12px 16px',
+    borderRadius: 'var(--radius-sm)',
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  msgError: {
+    background: 'oklch(96% 0.04 15)',
+    border: '1px solid oklch(75% 0.14 15)',
+    color: 'oklch(40% 0.18 15)',
+    padding: '12px 16px',
+    borderRadius: 'var(--radius-sm)',
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  btnPrimary: {
+    fontSize: 15,
+    fontWeight: 600,
+    color: 'white',
+    background: 'var(--accent)',
+    border: 'none',
+    borderRadius: 'var(--radius-sm)',
+    padding: '11px 28px',
+    cursor: 'pointer',
+    transition: 'background 0.15s',
+    outline: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    textDecoration: 'none',
+  },
+  btnPrimaryDisabled: {
+    background: 'var(--border2)',
+    cursor: 'not-allowed',
+    opacity: 0.6,
+  },
+  btnOutline: {
+    fontSize: 15,
+    fontWeight: 600,
+    color: 'var(--text)',
+    background: 'transparent',
+    border: `1px solid var(--border2)`,
+    borderRadius: 'var(--radius-sm)',
+    padding: '11px 28px',
+    cursor: 'pointer',
+    transition: 'border-color 0.15s, background 0.15s',
+    outline: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    textDecoration: 'none',
+  },
+};

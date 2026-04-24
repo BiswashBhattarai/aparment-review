@@ -265,8 +265,10 @@ async function main() {
   for (const d of aptData) {
     apartments.push(await prisma.apartment.create({ data: d }));
   }
+  console.log(`Created ${apartments.length} apartments.`);
 
   // create sample reviews
+  console.log('Creating sample reviews...');
   await prisma.review.create({ data: {
     apartmentId: apartments[0].id,
     userId: users[0].id,

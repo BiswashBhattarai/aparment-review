@@ -4,123 +4,248 @@ import dynamic from 'next/dynamic';
 import Header from '../src/components/Header';
 import ApartmentCard from '../src/components/ApartmentCard';
 
+// Import map dynamically to avoid SSR issues with Leaflet
 const ApartmentMap = dynamic(() => import('../src/components/ApartmentMap'), { ssr: false });
 
 export default function Home() {
   const [apartments, setApartments] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState({ max_rent: '', min_bedrooms: '', pet_friendly: false, parking: false, furnished: false, sort: 'newest' });
+  const [showMap, setShowMap] = useState(true);
+  const [filters, setFilters] = useState({
+    max_rent: '',
+    min_bedrooms: '',
+    pet_friendly: false,
+    parking: false,
+    furnished: false,
+    sort: 'newest',
+  });
 
-  useEffect(() => { fetchApts(); }, []);
+  useEffect(() => {
+    fetchApts();
+  }, []);
 
-  async function fetchApts(page=1) {
+  async function fetchApts() {
     setLoading(true);
     try {
-      const params = { page, ...filters };
-      // convert booleans to strings expected by backend
+      const params = { page: 1, ...filters };
+      // Clean up empty filters
       if (!params.pet_friendly) delete params.pet_friendly;
       if (!params.parking) delete params.parking;
       if (!params.furnished) delete params.furnished;
-      // Only include params if they have values
       if (!params.max_rent) delete params.max_rent;
       if (!params.min_bedrooms) delete params.min_bedrooms;
+
       const res = await axios.get('http://localhost:4000/api/apartments', { params });
-      setApartments(res.data.data);
+      setApartments(res.data.data || []);
     } catch (err) {
       console.error(err);
-    } finally { setLoading(false); }
+      setApartments([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function toggleFilter(key) { setFilters({ ...filters, [key]: !filters[key] }); }
+  function toggleFilter(key) {
+    setFilters(prev => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function handleClearFilters() {
+    setFilters({
+      max_rent: '',
+      min_bedrooms: '',
+      pet_friendly: false,
+      parking: false,
+      furnished: false,
+      sort: 'newest',
+    });
+  }
 
   return (
-    <div className="container">
+    <>
       <Header />
-      <main style={{ padding: '40px 20px', maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ margin: '0 0 8px 0', fontSize: 32, color: '#1a1a1a' }}>🏠 Find Your Next Apartment</h1>
-          <p style={{ margin: 0, fontSize: 16, color: '#666' }}>Filter by rent, amenities, and more</p>
-        </div>
-        
-        <section style={{ background: '#fff', border: '1px solid #e0e0e0', padding: 24, borderRadius: 8, marginBottom: 32, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          <h2 style={{ marginTop: 0, marginBottom: 20, fontSize: 18, color: '#1a1a1a' }}>Filters</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 20 }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: '600', color: '#333' }}>💰 Max Rent</label>
-              <input 
-                type="number" 
-                placeholder="e.g., 1500"
-                value={filters.max_rent} 
-                onChange={e => setFilters({ ...filters, max_rent: e.target.value })} 
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: '600', color: '#333' }}>🏠 Min Bedrooms</label>
-              <input 
-                type="number" 
-                placeholder="e.g., 2"
-                value={filters.min_bedrooms} 
-                onChange={e => setFilters({ ...filters, min_bedrooms: e.target.value })} 
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: '600', color: '#333' }}>📊 Sort by</label>
-              <select 
-                value={filters.sort} 
-                onChange={e => setFilters({ ...filters, sort: e.target.value })}
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', background: 'white', cursor: 'pointer' }}
-              >
-                <option value="newest">Newest</option>
-                <option value="price_asc">Lowest Price</option>
-                <option value="price_desc">Highest Price</option>
-              </select>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gridColumn: 'span 2' }}>
-              <label style={{ display: 'flex', alignItems: 'center', marginBottom: 12, cursor: 'pointer', fontWeight: '500', color: '#333' }}>
-                <input type="checkbox" checked={filters.pet_friendly} onChange={() => toggleFilter('pet_friendly')} style={{ marginRight: 8, cursor: 'pointer', width: 18, height: 18 }} /> 
-                🐶 Pet friendly
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', marginBottom: 12, cursor: 'pointer', fontWeight: '500', color: '#333' }}>
-                <input type="checkbox" checked={filters.furnished} onChange={() => toggleFilter('furnished')} style={{ marginRight: 8, cursor: 'pointer', width: 18, height: 18 }} /> 
-                🛋️ Furnished
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: '500', color: '#333' }}>
-                <input type="checkbox" checked={filters.parking} onChange={() => toggleFilter('parking')} style={{ marginRight: 8, cursor: 'pointer', width: 18, height: 18 }} /> 
-                🅿️ Parking
-              </label>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-              <button 
-                onClick={() => fetchApts(1)} 
-                style={{ padding: '10px 24px', background: '#0066cc', color: 'white', border: 'none', borderRadius: 6, fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s', fontSize: 14 }}
-                onMouseEnter={e => e.target.style.background = '#0052a3'}
-                onMouseLeave={e => e.target.style.background = '#0066cc'}
-              >
-                🔍 Apply Filters
-              </button>
-            </div>
+      <main>
+        <section style={styles.hero}>
+          <div style={styles.heroInner}>
+            <h1 style={styles.heroTitle}>
+              Find your next<br />
+              <span style={styles.heroAccent}>home in Iowa City.</span>
+            </h1>
+            <p style={styles.heroSubtitle}>Student-verified reviews, real prices, no surprises.</p>
           </div>
         </section>
 
-        {loading ? <p style={{ textAlign: 'center', color: '#666', fontSize: 16 }}>Loading apartments...</p> : (
-          <div>
-            <p style={{ fontSize: 14, color: '#666', marginBottom: 20 }}>Found <strong>{apartments.length}</strong> apartment{apartments.length !== 1 ? 's' : ''}</p>
-            
-            {apartments.length > 0 && (
-              <div style={{ marginBottom: 40 }}>
-                <h2 style={{ fontSize: 20, color: '#1a1a1a', marginBottom: 16 }}>📍 Locations</h2>
-                <ApartmentMap apartments={apartments} />
-              </div>
-            )}
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-              {apartments.map(a => <ApartmentCard key={a.id} apartment={a} />)}
+        <div style={styles.pageContent}>
+          {/* Filter Bar */}
+          <div style={styles.filterBar}>
+            <div style={styles.filterGroup}>
+              <label style={styles.filterLabel}>Max Rent</label>
+              <input
+                type="number"
+                placeholder="e.g. $1,500"
+                value={filters.max_rent}
+                onChange={(e) => setFilters({ ...filters, max_rent: e.target.value })}
+                style={styles.filterInput}
+              />
+            </div>
+
+            <div style={styles.filterGroup}>
+              <label style={styles.filterLabel}>Min Bedrooms</label>
+              <input
+                type="number"
+                placeholder="e.g. 2"
+                min="1"
+                value={filters.min_bedrooms}
+                onChange={(e) => setFilters({ ...filters, min_bedrooms: e.target.value })}
+                style={styles.filterInput}
+              />
+            </div>
+
+            <div style={styles.filterGroup}>
+              <label style={styles.filterLabel}>Sort by</label>
+              <select
+                value={filters.sort}
+                onChange={(e) => setFilters({ ...filters, sort: e.target.value })}
+                style={styles.filterSelect}
+              >
+                <option value="newest">Newest</option>
+                <option value="price_asc">Lowest price</option>
+                <option value="price_desc">Highest price</option>
+              </select>
+            </div>
+
+            <div style={styles.filterToggles}>
+              {[
+                ['pet_friendly', 'Pet-friendly'],
+                ['furnished', 'Furnished'],
+                ['parking', 'Parking']
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => toggleFilter(key)}
+                  style={{
+                    ...styles.filterToggle,
+                    ...(filters[key] ? styles.filterToggleActive : {})
+                  }}
+                >
+                  {filters[key] && <span style={styles.filterToggleDot} />}
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div style={styles.filterActions}>
+              <button onClick={handleClearFilters} style={styles.btnOutline}>Clear</button>
+              <button onClick={fetchApts} style={styles.btnPrimary}>Search</button>
             </div>
           </div>
-        )}
+
+          {/* Map and Results Control */}
+          <div style={styles.resultsBar}>
+             <p style={styles.resultsCount}>
+              {loading ? "Searching..." : <span><strong>{apartments.length}</strong> apartments found</span>}
+            </p>
+            <button onClick={() => setShowMap(!showMap)} style={styles.btnOutline}>
+              {showMap ? "Hide map" : "Show map"}
+            </button>
+          </div>
+
+          {showMap && apartments.length > 0 && (
+            <div style={styles.mapContainer}>
+              <ApartmentMap apartments={apartments} />
+            </div>
+          )}
+
+          {/* Apartment Grid */}
+          <div style={styles.aptGrid}>
+            {apartments.map((apt) => (
+              <ApartmentCard key={apt.id} apartment={apt} />
+            ))}
+          </div>
+        </div>
       </main>
-    </div>
-  )
+    </>
+  );
 }
+
+const styles = {
+  hero: { background: 'var(--bg)', padding: '56px 24px 40px' },
+  heroInner: { maxWidth: 1200, margin: '0 auto' },
+  heroTitle: { fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 600, color: 'var(--text)', marginBottom: 12 },
+  heroAccent: { color: 'var(--accent)' },
+  heroSubtitle: { fontSize: 17, color: 'var(--text2)', fontWeight: 400, margin: 0 },
+  pageContent: { maxWidth: 1200, margin: '0 auto', padding: '32px 24px' },
+  filterBar: {
+    background: 'var(--card)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    padding: '20px 24px',
+    boxShadow: 'var(--shadow-sm)',
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 16,
+    alignItems: 'flex-end',
+    marginBottom: 28
+  },
+  filterGroup: { display: 'flex', flexDirection: 'column', gap: 6 },
+  filterLabel: { fontSize: 12, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase' },
+  filterInput: {
+    padding: '9px 14px',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)',
+    fontSize: 14,
+    background: 'var(--bg)',
+    outline: 'none',
+    minWidth: 140
+  },
+  filterSelect: {
+    padding: '9px 14px',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)',
+    fontSize: 14,
+    background: 'var(--bg)',
+    outline: 'none'
+  },
+  filterToggles: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  filterToggle: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '8px 14px',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-pill)',
+    fontSize: 13,
+    fontWeight: 500,
+    color: 'var(--text2)',
+    cursor: 'pointer',
+    background: 'var(--bg)',
+    outline: 'none'
+  },
+  filterToggleActive: {
+    background: 'var(--accent-soft)',
+    borderColor: 'var(--accent)',
+    color: 'var(--accent)',
+  },
+  filterToggleDot: {
+    width: 6,
+    height: 6,
+    borderRadius: '50%',
+    background: 'currentColor'
+  },
+  filterActions: { marginLeft: 'auto', display: 'flex', gap: 8 },
+  btnPrimary: {
+    fontSize: 14, fontWeight: 600, color: 'white', background: 'var(--accent)',
+    border: 'none', borderRadius: 'var(--radius-sm)', padding: '8px 18px', cursor: 'pointer'
+  },
+  btnOutline: {
+    fontSize: 14, fontWeight: 500, color: 'var(--text)', background: 'transparent',
+    border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', padding: '8px 18px', cursor: 'pointer'
+  },
+  resultsBar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+  resultsCount: { fontSize: 14, color: 'var(--text2)', margin: 0 },
+  mapContainer: { borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)', height: 400, marginBottom: 32 },
+  aptGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+    gap: 20
+  }
+};

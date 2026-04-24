@@ -36,6 +36,12 @@ A full-stack web application where Iowa City students can discover, review, and 
 - Node.js 16+ and npm
 - PostgreSQL 12+ (local or remote)
 
+### 0. Quick Database (Optional)
+If you have Docker, run this to start a database immediately:
+```bash
+docker run --name ic-apartments-db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=apartments -p 5432:5432 -d postgres
+```
+
 ### 1. Clone & Setup Backend
 
 ```bash
