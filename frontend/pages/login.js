@@ -24,7 +24,8 @@ export default function Login() {
   async function submit(e) {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:4000/api/auth/login', { email, password });
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const res = await axios.post(`${apiUrl}/api/auth/login`, { email, password });
       localStorage.setItem('jwt_token', res.data.token);
       router.push('/');
     } catch (err) {

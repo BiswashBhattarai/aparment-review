@@ -14,7 +14,8 @@ export default function VerifyEmail(){
     async function verify() {
       setStatus('loading');
       try {
-        const res = await fetch('http://localhost:4000/api/auth/verify-email', {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        const res = await fetch(`${apiUrl}/api/auth/verify-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token })
@@ -82,8 +83,8 @@ export default function VerifyEmail(){
                   </div>
                   <p style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>If the link expired, you can register again to receive a new verification link.</p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <a href="/login" style={{ padding: '10px', background: '#f0f0f0', color: '#0066cc', border: '#ddd solid 1px', borderRadius: 6, textDecoration: 'none', fontWeight: '500', textAlign: 'center', transition: 'background 0.2s', cursor: 'pointer' }} onMouseEnter={e => e.target.style.background = '#e0e0e0'} onMouseLeave={e => e.target.style.background = '#f0f0f0'}>← Back to Login</a>
-                    <a href="/register" style={{ padding: '10px', background: '#0066cc', color: 'white', border: 'none', borderRadius: 6, textDecoration: 'none', fontWeight: '500', textAlign: 'center', transition: 'background 0.2s', cursor: 'pointer' }} onMouseEnter={e => e.target.style.background = '#0052a3'} onMouseLeave={e => e.target.style.background = '#0066cc'}>Register Again</a>
+                    <Link href="/login" style={{ padding: '10px', background: '#f0f0f0', color: '#0066cc', border: '#ddd solid 1px', borderRadius: 6, textDecoration: 'none', fontWeight: '500', textAlign: 'center', transition: 'background 0.2s', cursor: 'pointer' }}>← Back to Login</Link>
+                    <Link href="/register" style={{ padding: '10px', background: '#0066cc', color: 'white', border: 'none', borderRadius: 6, textDecoration: 'none', fontWeight: '500', textAlign: 'center', transition: 'background 0.2s', cursor: 'pointer' }}>Register Again</Link>
                   </div>
                 </div>
               )}
@@ -108,7 +109,8 @@ function ManualVerify(){
     if (!input) { setMsg('Token is required'); setIsError(true); return; }
     setLoading(true);
     try{
-      const res = await fetch('http://localhost:4000/api/auth/verify-email', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const res = await fetch(`${apiUrl}/api/auth/verify-email`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: input })
       });
       const data = await res.json().catch(()=>({}));

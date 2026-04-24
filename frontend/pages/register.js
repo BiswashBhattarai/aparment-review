@@ -24,7 +24,8 @@ export default function Register() {
     e.preventDefault();
     setIsError(false);
     try {
-      await axios.post('http://localhost:4000/api/auth/register', { email, password });
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      await axios.post(`${apiUrl}/api/auth/register`, { email, password });
       setMessage('✓ Registered! Check your email for a verification link (or console if no email setup)');
       setEmail('');
       setPassword('');
