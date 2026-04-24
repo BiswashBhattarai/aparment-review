@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/router";
 
 export default function ApartmentMap({ apartments }) {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const [isMounted, setIsMounted] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setIsMounted(true);
@@ -55,14 +57,23 @@ export default function ApartmentMap({ apartments }) {
             <p style="margin: 4px 0; font-size: 12px; color: #0066cc; font-weight: 600;">
               💰 $${apt.rent_min} - $${apt.rent_max}/mo
             </p>
-            <a href="/apartment/${apt.id}" style="display: inline-block; margin-top: 8px; padding: 6px 12px; background: #0066cc; color: white; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: 500;">
+            <button id=\"btn-${apt.id}\" style=\"display: inline-block; margin-top: 8px; padding: 6px 12px; background: #0066cc; color: white; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; font-weight: 500;\">
               View details →
-            </a>
+            </button>
           </div>
         `;
         L.marker([apt.latitude, apt.longitude])
           .bindPopup(popup)
-          .addTo(map.current);
+          .addTo(map.current)
+          .on('popupopen', () => {
+            const btn = document.getElementById(`btn-${apt.id}`);
+            if (btn) {
+              btn.onclick = (e) => {
+                e.preventDefault();
+                router.push(`/apartment/${apt.id}`);
+              };
+            }
+          });
       }
     });
   }, [apartments, isMounted]);
@@ -98,5 +109,3 @@ export default function ApartmentMap({ apartments }) {
     />
   );
 }
-
-
