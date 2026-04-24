@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 export default function ApartmentMap({ apartments }) {
   const mapContainer = useRef(null);
   const map = useRef(null);
+  const markerLayer = useRef(null);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
 
@@ -17,7 +18,6 @@ export default function ApartmentMap({ apartments }) {
 
     // Import Leaflet only on client-side after mount
     const L = require("leaflet");
-    require("leaflet/dist/leaflet.css");
 
     // Initialize map only once
     if (map.current) return;
@@ -40,13 +40,25 @@ export default function ApartmentMap({ apartments }) {
       shadowUrl:
         "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
     });
+
+    // Create a layer group for markers
+    markerLayer.current = L.layerGroup().addTo(map.current);
+
+    // Cleanup on unmount
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
   }, [isMounted]);
 
   // Add markers when apartments change
   useEffect(() => {
-    if (!isMounted || !map.current) return;
+    if (!isMounted || !map.current || !markerLayer.current) return;
 
     const L = require("leaflet");
+    markerLayer.current.clearLayers(); // Remove old markers before adding new ones
 
     apartments.forEach((apt) => {
       if (apt.latitude && apt.longitude) {
@@ -64,7 +76,7 @@ export default function ApartmentMap({ apartments }) {
         `;
         L.marker([apt.latitude, apt.longitude])
           .bindPopup(popup)
-          .addTo(map.current)
+          .addTo(markerLayer.current)
           .on('popupopen', () => {
             const btn = document.getElementById(`btn-${apt.id}`);
             if (btn) {
