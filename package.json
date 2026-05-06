@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "build": "prisma generate",
+    "build": "npx prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:generate": "prisma generate",
     "seed": "node prisma/seed.js"
@@ -20,10 +20,10 @@
     "express": "^4.18.2",
     "express-rate-limit": "^6.7.0",
     "jsonwebtoken": "^9.0.0",
-    "nodemailer": "^6.9.0"
+    "nodemailer": "^6.9.0",
+    "prisma": "^4.0.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22",
-    "prisma": "^4.0.0"
+    "nodemon": "^2.0.22"
   }
 }
